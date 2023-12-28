@@ -3,6 +3,7 @@
 
 use std::f32::consts::PI;
 
+use bevy::render::texture::ImageSampler;
 use bevy::{
     prelude::*,
     render::render_resource::{Extent3d, TextureDimension, TextureFormat},
@@ -10,7 +11,7 @@ use bevy::{
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins.set(ImagePlugin::default_nearest()))
+        .add_plugins(DefaultPlugins)
         .add_systems(Startup, setup)
         .add_systems(Update, rotate)
         .run();
@@ -108,7 +109,7 @@ fn uv_debug_texture() -> Image {
         palette.rotate_right(4);
     }
 
-    Image::new_fill(
+    let mut image = Image::new_fill(
         Extent3d {
             width: TEXTURE_SIZE as u32,
             height: TEXTURE_SIZE as u32,
@@ -117,5 +118,7 @@ fn uv_debug_texture() -> Image {
         TextureDimension::D2,
         &texture_data,
         TextureFormat::Rgba8UnormSrgb,
-    )
+    );
+    image.sampler = ImageSampler::nearest();
+    image
 }
