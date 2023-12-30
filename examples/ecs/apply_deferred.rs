@@ -23,7 +23,7 @@ fn main() {
                     despawn_old_and_spawn_new_fruits,
                     // We encourage adding apply_deferred to a custom set
                     // to improve diagnostics. This is optional, but useful when debugging!
-                    apply_deferred.in_set(CustomFlush),
+                    apply_deferred,
                     count_apple,
                 )
                     .chain(),
@@ -46,9 +46,6 @@ impl Default for Timers {
         }
     }
 }
-
-#[derive(Debug, Hash, PartialEq, Eq, Clone, SystemSet)]
-struct CustomFlush;
 
 #[derive(Component)]
 struct Apple;
@@ -104,14 +101,14 @@ fn setup(mut commands: Commands) {
         });
 }
 
-// Every tick, before the CustomFlush we added, we despawn any Apple and Orange
+// Every tick, before the `apply_deferred` we added, we despawn any Apple and Orange
 // we have previously spawned, if any. Then we tick the timer, and if the timer
 // has finished during this tick, we spawn a new Apple and a new Orange.
 //
 // The commands that we have added here will normally be flushed by Bevy
 // after all systems in the schedule have run, but because we have ordered
-// this system to run before `apply_deferred.in_set(CustomFlush)`,
-// these commands added here will be flushed during our custom flush.
+// this system to run before `apply_deferred`,
+// these commands added here will be flushed during `apply_deferred` run.
 fn despawn_old_and_spawn_new_fruits(
     mut commands: Commands,
     time: Res<Time>,
@@ -138,8 +135,8 @@ fn despawn_old_and_spawn_new_fruits(
 // If the timer has finished during this tick, we see if there is an entity
 // with an Apple component or not, and update the UI accordingly.
 //
-// Since this system is ordered `.after(CustomFlush)` it will be guaranteed
-// to run after our CustomFlush set, so the Apple will always be counted.
+// Since this system is ordered after `apply_deferred` it will be guaranteed
+// the Apple will always be counted.
 //
 // We will see the AppleCount go from "Apple: nothing counted yet" to "Apple: counted"
 fn count_apple(
@@ -160,8 +157,8 @@ fn count_apple(
 // If the timer has finished during this tick, we see if there is an entity
 // with an Orange component or not, and update the UI accordingly.
 //
-// Since this system is not ordered `.after(CustomFlush)`, it may or may not run
-// before the custom flush, therefore you will see the UI either show "Orange: counted"
+// Since this system is not ordered with `apply_deferred`, it may or may not run
+// before the `apply_deferred`, therefore you will see the UI either show "Orange: counted"
 // or "Orange: not counted" or alternate between the two.
 //
 // Try to re-run the example multiple times as well.
