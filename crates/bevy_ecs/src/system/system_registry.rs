@@ -2,7 +2,9 @@ use crate::entity::Entity;
 use crate::system::{BoxedSystem, Command, IntoSystem};
 use crate::world::World;
 use crate::{self as bevy_ecs};
-use bevy_ecs_macros::Component;
+use bevy_ecs_macros::{Component, Resource};
+use bevy_utils::HashMap;
+use std::any::TypeId;
 use thiserror::Error;
 
 /// A small wrapper for [`BoxedSystem`] that also keeps track whether or not the system has been initialized.
@@ -74,6 +76,20 @@ impl<I, O> std::fmt::Debug for SystemId<I, O> {
     }
 }
 
+/// Store systems registered by `TypeId`.
+#[derive(Resource)]
+struct SystemByTypeIdRegistry<I, O> {
+    systems_by_type_id: HashMap<TypeId, SystemId<I, O>>,
+}
+
+impl<I, O> Default for SystemByTypeIdRegistry<I, O> {
+    fn default() -> Self {
+        SystemByTypeIdRegistry {
+            systems_by_type_id: HashMap::new(),
+        }
+    }
+}
+
 impl World {
     /// Registers a system and returns a [`SystemId`] so it can later be called by [`World::run_system`].
     ///
@@ -107,6 +123,78 @@ impl World {
             .id(),
             std::marker::PhantomData,
         )
+    }
+
+    /// Register a system by its type id.
+    ///
+    /// If a system is registered, return `SystemId` as `Ok`, otherwise return existing `SystemId` as `Err`.
+    ///
+    /// Note: if the same system is registered multiple times from different call sites,
+    /// call sites will reference the same system instance, and in particular, the systems will share local state.
+    ///
+    /// Additionally, if the system is created from a closure, the closure will capture the local state
+    /// only on the first run.
+    ///
+    /// # Examples
+    ///
+    /// Here we register a system locally and run it.
+    ///
+    /// ```
+    /// # use bevy_ecs::system::Commands;
+    /// # use bevy_ecs::world::World;
+    ///
+    /// // This system is not added to any schedule.
+    /// fn on_click(_commands: Commands) {}
+    ///
+    /// // Regular system, called from schedule.
+    /// fn ui_system(world: &mut World) {
+    ///     let clicked = true;
+    ///     if clicked {
+    ///         // A system id for implementation `on_click` will be created on the first run.
+    ///         let id = world.register_system_by_type_id(on_click).unwrap_or_else(|id| id);
+    ///         world.run_system(id).unwrap();
+    ///     }
+    /// }
+    /// ```
+    ///
+    /// This is an example of **incorrect** use of `register_system_by_type_id`: first registration of the system
+    /// will grab the local state.
+    ///
+    ///
+    /// ```
+    /// # use bevy_ecs::world::World;
+    /// # use bevy_ecs_macros::Resource;
+    /// #[derive(Resource)]
+    /// struct MyResource { state: u32 };
+    ///
+    /// fn incorrect_use_of_register_system_by_type_id(world: &mut World) {
+    ///     let state = world.resource::<MyResource>().state;
+    ///     // First invocation of `register_system_by_type_id` will grab the local `state`,
+    ///     // and the following invocations will use that `state` instead of the current one.
+    ///     let id = world.register_system_by_type_id(move || { println!("{}", state) }).unwrap_or_else(|id| id);
+    ///     world.run_system(id).unwrap();
+    /// }
+    /// ```
+    pub fn register_system_by_type_id<
+        I: 'static,
+        O: 'static,
+        M,
+        S: IntoSystem<I, O, M> + 'static,
+    >(
+        &mut self,
+        system: S,
+    ) -> Result<SystemId<I, O>, SystemId<I, O>> {
+        let type_id = TypeId::of::<S::System>();
+        let registry = self.get_resource_or_insert_with(SystemByTypeIdRegistry::<I, O>::default);
+        if let Some(id) = registry.systems_by_type_id.get(&type_id) {
+            return Err(*id);
+        }
+
+        let id = self.register_system(system);
+        let mut registry = self.resource_mut::<SystemByTypeIdRegistry<I, O>>();
+        let prev = registry.systems_by_type_id.insert(type_id, id);
+        assert!(prev.is_none());
+        Ok(id)
     }
 
     /// Removes a registered system and returns the system, if it exists.
@@ -561,5 +649,38 @@ mod tests {
         world.spawn(Callback(increment_by, 3));
         let _ = world.run_system(nested_id);
         assert_eq!(*world.resource::<Counter>(), Counter(5));
+    }
+
+    #[test]
+    fn register_system_at_most_once_twice() {
+        fn system(_commands: Commands) {}
+
+        let mut world = World::new();
+        let s0 = world.register_system_by_type_id(system).unwrap();
+        let s1 = world.register_system_by_type_id(system).unwrap_err();
+        assert_eq!(s0, s1);
+    }
+
+    #[test]
+    fn register_system_at_most_once_identical_systems_different_type_id() {
+        let mut world = World::new();
+        let r0 = world
+            .register_system_by_type_id(|mut local: Local<u32>| {
+                *local += 1;
+                *local
+            })
+            .unwrap();
+        let r1 = world
+            .register_system_by_type_id(|mut local: Local<u32>| {
+                *local += 1;
+                *local
+            })
+            .unwrap();
+        assert_eq!(1, world.run_system(r0).unwrap());
+        assert_eq!(2, world.run_system(r0).unwrap());
+        assert_eq!(1, world.run_system(r1).unwrap());
+        assert_eq!(2, world.run_system(r1).unwrap());
+        assert_eq!(3, world.run_system(r0).unwrap());
+        assert_eq!(3, world.run_system(r1).unwrap());
     }
 }
