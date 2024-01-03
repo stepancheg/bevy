@@ -230,35 +230,22 @@ impl ComponentSparseSet {
             Some((
                 self.dense.get_data_unchecked(dense_index),
                 TickCells {
-                    added: self.dense.get_added_tick_unchecked(dense_index),
-                    changed: self.dense.get_changed_tick_unchecked(dense_index),
+                    component_ticks: self.dense.get_component_ticks_unchecked(dense_index),
                 },
             ))
         }
     }
 
-    /// Returns a reference to the "added" tick of the entity's component value.
+    /// Returns a reference to the "added" and "changed" ticks of the entity's component value.
     ///
     /// Returns `None` if `entity` does not have a component in the sparse set.
     #[inline]
-    pub fn get_added_tick(&self, entity: Entity) -> Option<&UnsafeCell<Tick>> {
+    pub fn get_component_ticks(&self, entity: Entity) -> Option<&UnsafeCell<ComponentTicks>> {
         let dense_index = *self.sparse.get(entity.index())?;
         #[cfg(debug_assertions)]
         assert_eq!(entity, self.entities[dense_index.as_usize()]);
         // SAFETY: if the sparse index points to something in the dense vec, it exists
-        unsafe { Some(self.dense.get_added_tick_unchecked(dense_index)) }
-    }
-
-    /// Returns a reference to the "changed" tick of the entity's component value.
-    ///
-    /// Returns `None` if `entity` does not have a component in the sparse set.
-    #[inline]
-    pub fn get_changed_tick(&self, entity: Entity) -> Option<&UnsafeCell<Tick>> {
-        let dense_index = *self.sparse.get(entity.index())?;
-        #[cfg(debug_assertions)]
-        assert_eq!(entity, self.entities[dense_index.as_usize()]);
-        // SAFETY: if the sparse index points to something in the dense vec, it exists
-        unsafe { Some(self.dense.get_changed_tick_unchecked(dense_index)) }
+        unsafe { Some(self.dense.get_component_ticks_unchecked(dense_index)) }
     }
 
     /// Returns a reference to the "added" and "changed" ticks of the entity's component value.

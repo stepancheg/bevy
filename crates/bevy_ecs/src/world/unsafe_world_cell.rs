@@ -960,8 +960,7 @@ unsafe fn get_component_and_ticks(
             Some((
                 components.get_data_unchecked(location.table_row),
                 TickCells {
-                    added: components.get_added_tick_unchecked(location.table_row),
-                    changed: components.get_changed_tick_unchecked(location.table_row),
+                    component_ticks: components.get_component_ticks_unchecked(location.table_row),
                 },
             ))
         }

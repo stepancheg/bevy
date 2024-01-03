@@ -1,5 +1,6 @@
 //! Types that detect when their internal data mutate.
 
+use crate::component::ComponentTicks;
 use crate::{
     component::{Tick, TickCells},
     ptr::PtrMut,
@@ -253,6 +254,7 @@ macro_rules! change_detection_impl {
             #[inline]
             fn is_added(&self) -> bool {
                 self.ticks
+                    .component_ticks
                     .added
                     .is_newer_than(self.ticks.last_run, self.ticks.this_run)
             }
@@ -260,13 +262,14 @@ macro_rules! change_detection_impl {
             #[inline]
             fn is_changed(&self) -> bool {
                 self.ticks
+                    .component_ticks
                     .changed
                     .is_newer_than(self.ticks.last_run, self.ticks.this_run)
             }
 
             #[inline]
             fn last_changed(&self) -> Tick {
-                *self.ticks.changed
+                self.ticks.component_ticks.changed
             }
         }
 
@@ -295,12 +298,12 @@ macro_rules! change_detection_mut_impl {
 
             #[inline]
             fn set_changed(&mut self) {
-                *self.ticks.changed = self.ticks.this_run;
+                self.ticks.component_ticks.changed = self.ticks.this_run;
             }
 
             #[inline]
             fn set_last_changed(&mut self, last_changed: Tick) {
-                *self.ticks.changed = last_changed;
+                self.ticks.component_ticks.changed = last_changed;
             }
 
             #[inline]
@@ -345,8 +348,7 @@ macro_rules! impl_methods {
                 Mut {
                     value: self.value,
                     ticks: TicksMut {
-                        added: self.ticks.added,
-                        changed: self.ticks.changed,
+                        component_ticks: self.ticks.component_ticks,
                         last_run: self.ticks.last_run,
                         this_run: self.ticks.this_run,
                     }
@@ -411,8 +413,7 @@ macro_rules! impl_debug {
 
 #[derive(Clone)]
 pub(crate) struct Ticks<'w> {
-    pub(crate) added: &'w Tick,
-    pub(crate) changed: &'w Tick,
+    pub(crate) component_ticks: &'w ComponentTicks,
     pub(crate) last_run: Tick,
     pub(crate) this_run: Tick,
 }
@@ -427,8 +428,7 @@ impl<'w> Ticks<'w> {
         this_run: Tick,
     ) -> Self {
         Self {
-            added: cells.added.deref(),
-            changed: cells.changed.deref(),
+            component_ticks: cells.component_ticks.deref(),
             last_run,
             this_run,
         }
@@ -436,8 +436,7 @@ impl<'w> Ticks<'w> {
 }
 
 pub(crate) struct TicksMut<'w> {
-    pub(crate) added: &'w mut Tick,
-    pub(crate) changed: &'w mut Tick,
+    pub(crate) component_ticks: &'w mut ComponentTicks,
     pub(crate) last_run: Tick,
     pub(crate) this_run: Tick,
 }
@@ -452,8 +451,7 @@ impl<'w> TicksMut<'w> {
         this_run: Tick,
     ) -> Self {
         Self {
-            added: cells.added.deref_mut(),
-            changed: cells.changed.deref_mut(),
+            component_ticks: cells.component_ticks.deref_mut(),
             last_run,
             this_run,
         }
@@ -463,8 +461,7 @@ impl<'w> TicksMut<'w> {
 impl<'w> From<TicksMut<'w>> for Ticks<'w> {
     fn from(ticks: TicksMut<'w>) -> Self {
         Ticks {
-            added: ticks.added,
-            changed: ticks.changed,
+            component_ticks: ticks.component_ticks,
             last_run: ticks.last_run,
             this_run: ticks.this_run,
         }
@@ -680,16 +677,14 @@ impl<'w, T: ?Sized> Ref<'w, T> {
     /// - `this_run` - A [`Tick`] corresponding to the current point in time -- "now".
     pub fn new(
         value: &'w T,
-        added: &'w Tick,
-        changed: &'w Tick,
+        added_changed: &'w ComponentTicks,
         last_run: Tick,
         this_run: Tick,
     ) -> Ref<'w, T> {
         Ref {
             value,
             ticks: Ticks {
-                added,
-                changed,
+                component_ticks: added_changed,
                 last_run,
                 this_run,
             },
@@ -735,16 +730,14 @@ impl<'w, T: ?Sized> Mut<'w, T> {
     /// - `this_run` - A [`Tick`] corresponding to the current point in time -- "now".
     pub fn new(
         value: &'w mut T,
-        added: &'w mut Tick,
-        last_changed: &'w mut Tick,
+        added_changed: &'w mut ComponentTicks,
         last_run: Tick,
         this_run: Tick,
     ) -> Self {
         Self {
             value,
             ticks: TicksMut {
-                added,
-                changed: last_changed,
+                component_ticks: added_changed,
                 last_run,
                 this_run,
             },
@@ -821,8 +814,7 @@ impl<'w> MutUntyped<'w> {
         MutUntyped {
             value: self.value.reborrow(),
             ticks: TicksMut {
-                added: self.ticks.added,
-                changed: self.ticks.changed,
+                component_ticks: self.ticks.component_ticks,
                 last_run: self.ticks.last_run,
                 this_run: self.ticks.this_run,
             },
@@ -889,6 +881,7 @@ impl<'w> DetectChanges for MutUntyped<'w> {
     #[inline]
     fn is_added(&self) -> bool {
         self.ticks
+            .component_ticks
             .added
             .is_newer_than(self.ticks.last_run, self.ticks.this_run)
     }
@@ -896,13 +889,14 @@ impl<'w> DetectChanges for MutUntyped<'w> {
     #[inline]
     fn is_changed(&self) -> bool {
         self.ticks
+            .component_ticks
             .changed
             .is_newer_than(self.ticks.last_run, self.ticks.this_run)
     }
 
     #[inline]
     fn last_changed(&self) -> Tick {
-        *self.ticks.changed
+        self.ticks.component_ticks.changed
     }
 }
 
@@ -911,12 +905,12 @@ impl<'w> DetectChangesMut for MutUntyped<'w> {
 
     #[inline]
     fn set_changed(&mut self) {
-        *self.ticks.changed = self.ticks.this_run;
+        self.ticks.component_ticks.changed = self.ticks.this_run;
     }
 
     #[inline]
     fn set_last_changed(&mut self, last_changed: Tick) {
-        *self.ticks.changed = last_changed;
+        self.ticks.component_ticks.changed = last_changed;
     }
 
     #[inline]
@@ -1039,8 +1033,12 @@ mod tests {
 
         let mut query = world.query::<Ref<C>>();
         for tracker in query.iter(&world) {
-            let ticks_since_insert = change_tick.relative_to(*tracker.ticks.added).get();
-            let ticks_since_change = change_tick.relative_to(*tracker.ticks.changed).get();
+            let ticks_since_insert = change_tick
+                .relative_to(tracker.ticks.component_ticks.added)
+                .get();
+            let ticks_since_change = change_tick
+                .relative_to(tracker.ticks.component_ticks.changed)
+                .get();
             assert!(ticks_since_insert > MAX_CHANGE_AGE);
             assert!(ticks_since_change > MAX_CHANGE_AGE);
         }
@@ -1049,8 +1047,12 @@ mod tests {
         world.check_change_ticks();
 
         for tracker in query.iter(&world) {
-            let ticks_since_insert = change_tick.relative_to(*tracker.ticks.added).get();
-            let ticks_since_change = change_tick.relative_to(*tracker.ticks.changed).get();
+            let ticks_since_insert = change_tick
+                .relative_to(tracker.ticks.component_ticks.added)
+                .get();
+            let ticks_since_change = change_tick
+                .relative_to(tracker.ticks.component_ticks.changed)
+                .get();
             assert_eq!(ticks_since_insert, MAX_CHANGE_AGE);
             assert_eq!(ticks_since_change, MAX_CHANGE_AGE);
         }
@@ -1063,8 +1065,7 @@ mod tests {
             changed: Tick::new(2),
         };
         let ticks = TicksMut {
-            added: &mut component_ticks.added,
-            changed: &mut component_ticks.changed,
+            component_ticks: &mut component_ticks,
             last_run: Tick::new(3),
             this_run: Tick::new(4),
         };
@@ -1075,8 +1076,8 @@ mod tests {
         };
 
         let into_mut: Mut<R> = res_mut.into();
-        assert_eq!(1, into_mut.ticks.added.get());
-        assert_eq!(2, into_mut.ticks.changed.get());
+        assert_eq!(1, into_mut.ticks.component_ticks.added.get());
+        assert_eq!(2, into_mut.ticks.component_ticks.changed.get());
         assert_eq!(3, into_mut.ticks.last_run.get());
         assert_eq!(4, into_mut.ticks.this_run.get());
     }
@@ -1091,8 +1092,7 @@ mod tests {
 
         let val = Mut::new(
             &mut res,
-            &mut component_ticks.added,
-            &mut component_ticks.changed,
+            &mut component_ticks,
             Tick::new(2), // last_run
             Tick::new(4), // this_run
         );
@@ -1108,8 +1108,7 @@ mod tests {
             changed: Tick::new(2),
         };
         let ticks = TicksMut {
-            added: &mut component_ticks.added,
-            changed: &mut component_ticks.changed,
+            component_ticks: &mut component_ticks,
             last_run: Tick::new(3),
             this_run: Tick::new(4),
         };
@@ -1120,8 +1119,8 @@ mod tests {
         };
 
         let into_mut: Mut<R> = non_send_mut.into();
-        assert_eq!(1, into_mut.ticks.added.get());
-        assert_eq!(2, into_mut.ticks.changed.get());
+        assert_eq!(1, into_mut.ticks.component_ticks.added.get());
+        assert_eq!(2, into_mut.ticks.component_ticks.changed.get());
         assert_eq!(3, into_mut.ticks.last_run.get());
         assert_eq!(4, into_mut.ticks.this_run.get());
     }
@@ -1138,8 +1137,7 @@ mod tests {
             changed: Tick::new(2),
         };
         let ticks = TicksMut {
-            added: &mut component_ticks.added,
-            changed: &mut component_ticks.changed,
+            component_ticks: &mut component_ticks,
             last_run,
             this_run,
         };
@@ -1223,8 +1221,7 @@ mod tests {
             changed: Tick::new(2),
         };
         let ticks = TicksMut {
-            added: &mut component_ticks.added,
-            changed: &mut component_ticks.changed,
+            component_ticks: &mut component_ticks,
             last_run,
             this_run,
         };

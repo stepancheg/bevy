@@ -744,9 +744,7 @@ impl Tick {
 #[derive(Copy, Clone, Debug)]
 pub struct TickCells<'a> {
     /// The tick indicating when the value was added to the world.
-    pub added: &'a UnsafeCell<Tick>,
-    /// The tick indicating the last time the value was modified.
-    pub changed: &'a UnsafeCell<Tick>,
+    pub component_ticks: &'a UnsafeCell<ComponentTicks>,
 }
 
 impl<'a> TickCells<'a> {
@@ -754,10 +752,7 @@ impl<'a> TickCells<'a> {
     /// All cells contained within must uphold the safety invariants of [`UnsafeCellDeref::read`].
     #[inline]
     pub(crate) unsafe fn read(&self) -> ComponentTicks {
-        ComponentTicks {
-            added: self.added.read(),
-            changed: self.changed.read(),
-        }
+        self.component_ticks.read()
     }
 }
 

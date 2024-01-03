@@ -1604,8 +1604,7 @@ impl World {
         let value_mut = Mut {
             value: &mut value,
             ticks: TicksMut {
-                added: &mut ticks.added,
-                changed: &mut ticks.changed,
+                component_ticks: &mut ticks,
                 last_run: last_change_tick,
                 this_run: change_tick,
             },

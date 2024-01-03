@@ -1,3 +1,4 @@
+use crate::component::ComponentTicks;
 use crate::{
     archetype::{Archetype, ArchetypeComponentId},
     component::{Component, ComponentId, ComponentStorage, StorageType, Tick},
@@ -579,7 +580,7 @@ pub struct Added<T>(PhantomData<T>);
 #[doc(hidden)]
 #[derive(Clone)]
 pub struct AddedFetch<'w> {
-    table_ticks: Option<ThinSlicePtr<'w, UnsafeCell<Tick>>>,
+    table_ticks: Option<ThinSlicePtr<'w, UnsafeCell<ComponentTicks>>>,
     sparse_set: Option<&'w ComponentSparseSet>,
     last_run: Tick,
     this_run: Tick,
@@ -641,8 +642,10 @@ unsafe impl<T: Component> WorldQuery for Added<T> {
         table: &'w Table,
     ) {
         fetch.table_ticks = Some(
-            Column::get_added_ticks_slice(table.get_column(component_id).debug_checked_unwrap())
-                .into(),
+            Column::get_component_ticks_slice(
+                table.get_column(component_id).debug_checked_unwrap(),
+            )
+            .into(),
         );
     }
 
@@ -658,12 +661,14 @@ unsafe impl<T: Component> WorldQuery for Added<T> {
                 .debug_checked_unwrap()
                 .get(table_row.as_usize())
                 .deref()
+                .added
                 .is_newer_than(fetch.last_run, fetch.this_run),
             StorageType::SparseSet => {
                 let sparse_set = &fetch.sparse_set.debug_checked_unwrap();
-                ComponentSparseSet::get_added_tick(sparse_set, entity)
+                ComponentSparseSet::get_component_ticks(sparse_set, entity)
                     .debug_checked_unwrap()
                     .deref()
+                    .added
                     .is_newer_than(fetch.last_run, fetch.this_run)
             }
         }
@@ -786,7 +791,7 @@ pub struct Changed<T>(PhantomData<T>);
 #[doc(hidden)]
 #[derive(Clone)]
 pub struct ChangedFetch<'w> {
-    table_ticks: Option<ThinSlicePtr<'w, UnsafeCell<Tick>>>,
+    table_ticks: Option<ThinSlicePtr<'w, UnsafeCell<ComponentTicks>>>,
     sparse_set: Option<&'w ComponentSparseSet>,
     last_run: Tick,
     this_run: Tick,
@@ -848,8 +853,10 @@ unsafe impl<T: Component> WorldQuery for Changed<T> {
         table: &'w Table,
     ) {
         fetch.table_ticks = Some(
-            Column::get_changed_ticks_slice(table.get_column(component_id).debug_checked_unwrap())
-                .into(),
+            Column::get_component_ticks_slice(
+                table.get_column(component_id).debug_checked_unwrap(),
+            )
+            .into(),
         );
     }
 
@@ -865,12 +872,14 @@ unsafe impl<T: Component> WorldQuery for Changed<T> {
                 .debug_checked_unwrap()
                 .get(table_row.as_usize())
                 .deref()
+                .changed
                 .is_newer_than(fetch.last_run, fetch.this_run),
             StorageType::SparseSet => {
                 let sparse_set = &fetch.sparse_set.debug_checked_unwrap();
-                ComponentSparseSet::get_changed_tick(sparse_set, entity)
+                ComponentSparseSet::get_component_ticks(sparse_set, entity)
                     .debug_checked_unwrap()
                     .deref()
+                    .changed
                     .is_newer_than(fetch.last_run, fetch.this_run)
             }
         }

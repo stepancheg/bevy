@@ -161,11 +161,10 @@ impl<const SEND: bool> ResourceData<SEND> {
         if self.is_present() {
             self.validate_access();
             self.column.replace_untracked(Self::ROW, value);
-            *self.column.get_added_tick_unchecked(Self::ROW).deref_mut() = change_ticks.added;
             *self
                 .column
-                .get_changed_tick_unchecked(Self::ROW)
-                .deref_mut() = change_ticks.changed;
+                .get_component_ticks_unchecked(Self::ROW)
+                .deref_mut() = change_ticks;
         } else {
             if !SEND {
                 self.origin_thread_id = Some(std::thread::current().id());
