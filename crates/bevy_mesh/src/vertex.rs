@@ -225,6 +225,46 @@ pub enum VertexAttributeValues {
 }
 
 impl VertexAttributeValues {
+    pub fn new(format: VertexFormat) -> Self {
+        match format {
+            VertexFormat::Uint8x2 => VertexAttributeValues::Uint8x2(Vec::new()),
+            VertexFormat::Uint8x4 => VertexAttributeValues::Uint8x4(Vec::new()),
+            VertexFormat::Sint8x2 => VertexAttributeValues::Sint8x2(Vec::new()),
+            VertexFormat::Sint8x4 => VertexAttributeValues::Sint8x4(Vec::new()),
+            VertexFormat::Unorm8x2 => VertexAttributeValues::Unorm8x2(Vec::new()),
+            VertexFormat::Unorm8x4 => VertexAttributeValues::Unorm8x4(Vec::new()),
+            VertexFormat::Snorm8x2 => VertexAttributeValues::Snorm8x2(Vec::new()),
+            VertexFormat::Snorm8x4 => VertexAttributeValues::Snorm8x4(Vec::new()),
+            VertexFormat::Uint16x2 => VertexAttributeValues::Uint16x2(Vec::new()),
+            VertexFormat::Uint16x4 => VertexAttributeValues::Uint16x4(Vec::new()),
+            VertexFormat::Sint16x2 => VertexAttributeValues::Sint16x2(Vec::new()),
+            VertexFormat::Sint16x4 => VertexAttributeValues::Sint16x4(Vec::new()),
+            VertexFormat::Unorm16x2 => VertexAttributeValues::Unorm16x2(Vec::new()),
+            VertexFormat::Unorm16x4 => VertexAttributeValues::Unorm16x4(Vec::new()),
+            VertexFormat::Snorm16x2 => VertexAttributeValues::Snorm16x2(Vec::new()),
+            VertexFormat::Snorm16x4 => VertexAttributeValues::Snorm16x4(Vec::new()),
+            VertexFormat::Float32 => VertexAttributeValues::Float32(Vec::new()),
+            VertexFormat::Float32x2 => VertexAttributeValues::Float32x2(Vec::new()),
+            VertexFormat::Float32x3 => VertexAttributeValues::Float32x3(Vec::new()),
+            VertexFormat::Float32x4 => VertexAttributeValues::Float32x4(Vec::new()),
+            VertexFormat::Uint32 => VertexAttributeValues::Uint32(Vec::new()),
+            VertexFormat::Uint32x2 => VertexAttributeValues::Uint32x2(Vec::new()),
+            VertexFormat::Uint32x3 => VertexAttributeValues::Uint32x3(Vec::new()),
+            VertexFormat::Uint32x4 => VertexAttributeValues::Uint32x4(Vec::new()),
+            VertexFormat::Sint32 => VertexAttributeValues::Sint32(Vec::new()),
+            VertexFormat::Sint32x2 => VertexAttributeValues::Sint32x2(Vec::new()),
+            VertexFormat::Sint32x3 => VertexAttributeValues::Sint32x3(Vec::new()),
+            VertexFormat::Sint32x4 => VertexAttributeValues::Sint32x4(Vec::new()),
+            VertexFormat::Float16x2 => panic!("Float16x2 is not supported"),
+            VertexFormat::Float16x4 => panic!("Float16x4 is not supported"),
+            VertexFormat::Float64 => panic!("Float64 is not supported"),
+            VertexFormat::Float64x2 => panic!("Float64x2 is not supported"),
+            VertexFormat::Float64x3 => panic!("Float64x3 is not supported"),
+            VertexFormat::Float64x4 => panic!("Float64x4 is not supported"),
+            VertexFormat::Unorm10_10_10_2 => panic!("Unorm10_10_10_2 is not supported"),
+        }
+    }
+
     /// Returns the number of vertices in this [`VertexAttributeValues`]. For a single
     /// mesh, all of the [`VertexAttributeValues`] must have the same length.
     #[allow(clippy::match_same_arms)]
